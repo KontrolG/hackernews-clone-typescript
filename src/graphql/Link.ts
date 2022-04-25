@@ -11,26 +11,13 @@ export const Link = objectType({
   }
 });
 
-const links: NexusGenObjects["Link"][] = [
-  {
-    id: 1,
-    url: "www.howtographql.com",
-    description: "Fullstack tutorial for GraphQL"
-  },
-  {
-    id: 2,
-    url: "graphql.org",
-    description: "GraphQL official website"
-  }
-];
-
 export const FeedQuery = extendType({
   type: "Query",
   definition(t) {
     t.nonNull.list.nonNull.field("feed", {
       type: "Link",
-      resolve() {
-        return links;
+      resolve(parent, args, context) {
+        return context.prisma.link.findMany();
       }
     });
   }
@@ -45,15 +32,14 @@ export const PostMutation = extendType({
         url: nonNull(stringArg()),
         description: nonNull(stringArg())
       },
-      resolve(_parent, args) {
+      resolve(_parent, args, context) {
         const { url, description } = args;
-        const newLink = {
-          id: links.length + 1,
-          url,
-          description
-        };
-        links.push(newLink);
-        return newLink;
+        return context.prisma.link.create({
+          data: {
+            url,
+            description
+          }
+        });
       }
     });
   }
@@ -66,26 +52,18 @@ export const UpdateMutation = extendType({
       type: "Link",
       args: {
         id: nonNull(intArg()),
-        url: stringArg(),
-        description: stringArg()
+        url: nonNull(stringArg()),
+        description: nonNull(stringArg())
       },
-      resolve(_parent, args) {
+      resolve(_parent, args, context) {
         const { id, url, description } = args;
-        const link = links.find((linkItem) => linkItem.id === id);
-
-        if (!link) {
-          throw new UserInputError("Link ID not found");
-        }
-
-        if (url) {
-          link.url = url;
-        }
-
-        if (description) {
-          link.description = description;
-        }
-
-        return link;
+        return context.prisma.link.update({
+          where: { id },
+          data: {
+            url,
+            description
+          }
+        });
       }
     });
   }
@@ -99,18 +77,11 @@ export const DeleteMutation = extendType({
       args: {
         id: nonNull(intArg())
       },
-      resolve(_parent, args) {
+      resolve(_parent, args, context) {
         const { id } = args;
-        const linkIndex = links.findIndex((linkItem) => linkItem.id === id);
-        const link = links[linkIndex];
-
-        if (!link) {
-          throw new UserInputError("Link ID not found");
-        }
-
-        links.splice(linkIndex, 1);
-
-        return link;
+        return context.prisma.link.delete({
+          where: { id }
+        });
       }
     });
   }
