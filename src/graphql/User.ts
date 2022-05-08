@@ -6,7 +6,6 @@ export const User = objectType({
     t.nonNull.int("id");
     t.nonNull.string("name");
     t.nonNull.string("email");
-    t.nonNull.string("password");
     t.nonNull.list.nonNull.field("links", {
       type: "Link",
       resolve(parent, args, context) {

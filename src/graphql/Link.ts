@@ -42,10 +42,17 @@ export const PostMutation = extendType({
       },
       resolve(_parent, args, context) {
         const { url, description } = args;
+        const { userId } = context;
+
+        if (!userId) {
+          throw new Error("Login is required");
+        }
+
         return context.prisma.link.create({
           data: {
             url,
-            description
+            description,
+            postedBy: { connect: { id: userId } }
           }
         });
       }
