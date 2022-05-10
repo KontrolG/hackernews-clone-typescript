@@ -1,5 +1,16 @@
+import { Prisma } from "@prisma/client";
 import { UserInputError } from "apollo-server";
-import { extendType, intArg, nonNull, objectType, stringArg } from "nexus";
+import {
+  arg,
+  enumType,
+  extendType,
+  inputObjectType,
+  intArg,
+  list,
+  nonNull,
+  objectType,
+  stringArg
+} from "nexus";
 import { NexusGenObjects } from "../generated/nexus-typegen";
 
 export const Link = objectType({
@@ -28,13 +39,65 @@ export const Link = objectType({
   }
 });
 
+export const LinkOrderByInput = inputObjectType({
+  name: "LinkOrderByInput",
+  definition(t) {
+    t.field("description", { type: Sort });
+    t.field("url", { type: Sort });
+    t.field("createdAt", { type: Sort });
+  }
+});
+
+export const Sort = enumType({ name: "Sort", members: ["asc", "desc"] });
+
+export const Feed = objectType({
+  name: "Feed",
+  definition(t) {
+    t.nonNull.list.nonNull.field("links", { type: "Link" });
+    t.nonNull.int("count");
+    t.id("id");
+  }
+});
+
 export const FeedQuery = extendType({
   type: "Query",
   definition(t) {
-    t.nonNull.list.nonNull.field("feed", {
-      type: "Link",
-      resolve(parent, args, context) {
-        return context.prisma.link.findMany();
+    t.nonNull.field("feed", {
+      type: "Feed",
+      args: {
+        filter: stringArg(),
+        skip: intArg(),
+        take: intArg(),
+        orderBy: arg({ type: list(nonNull(LinkOrderByInput)) })
+      },
+      async resolve(parent, args, context) {
+        const { filter, skip, take, orderBy } = args;
+        const where = filter
+          ? {
+              OR: [
+                { description: { contains: filter } },
+                { url: { contains: filter } }
+              ]
+            }
+          : undefined;
+
+        const links = await context.prisma.link.findMany({
+          where,
+          skip: skip as number | undefined,
+          take: take as number | undefined,
+          orderBy: orderBy as
+            | Prisma.Enumerable<Prisma.LinkOrderByWithRelationInput>
+            | undefined
+        });
+
+        const count = await context.prisma.link.count({ where });
+        const id = `main-feed:${JSON.stringify(args)}`;
+
+        return {
+          links,
+          count,
+          id
+        };
       }
     });
   }
